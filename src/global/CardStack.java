@@ -9,8 +9,6 @@ import java.util.Vector;
 
 import javax.swing.JComponent;
 
-import fleaMarket.SolitaireFM;
-
 /* This is GUI component with a embedded
  * data structure. This structure is a mixture
  * of a queue and a stack

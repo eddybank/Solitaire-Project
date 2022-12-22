@@ -28,6 +28,7 @@ public class StatisticAnalysis {
 	 */
 
 	private static final File savedir = new File(System.getProperty("user.home"), ".solitairegame");
+	@SuppressWarnings("unused")
 	private static boolean dircreate = savedir.mkdir();
 	
 	//used for unit testing purposes
@@ -78,11 +79,11 @@ public class StatisticAnalysis {
 	/*
 	 * Loop through users, setting the favorite color selected for the current user
 	 */
-	public static void setUserColor(User user) 
+	public static void setUserColor(User user, String color) 
 	{
 		DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder documentBuilder;
-		String c = SolitaireMenu.getColorS();
+		String c = color;
 	    try 
 	    {
 	    	 documentBuilder = documentBuilderFactory.newDocumentBuilder();
@@ -307,6 +308,7 @@ public class StatisticAnalysis {
 	    	 NodeList users = document.getElementsByTagName("user");
 	    	 
 	    	 String game = "";
+	    	 @SuppressWarnings("unused")
 	    	 int best_time = 0;
 	    	 int time = 0;
 	    	 int score = 0;
@@ -353,7 +355,7 @@ public class StatisticAnalysis {
 	 * @param	user	User object of current user
 	 * @param	r	Record object that is to be added to XML file
 	 */
-	private static void setRecord(User user, Record r) 
+	private static void setRecord(User user, Record r, String gameType) 
 	{
 		 DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
 	     DocumentBuilder documentBuilder;
@@ -379,7 +381,7 @@ public class StatisticAnalysis {
 	    			 Element record = document.createElement("record");
 
 	    			 Element game = document.createElement("game");
-	    			 game.appendChild(document.createTextNode(SolitaireMenu.gameType));
+	    			 game.appendChild(document.createTextNode(gameType));
 	    			 record.appendChild(game);
 	    			 
 	    			 Element score = document.createElement("score");
@@ -471,7 +473,8 @@ public class StatisticAnalysis {
 	 */
 	public static void prettyPrint(){
 	    try{
-	    	boolean deleted = filePP.delete();
+	    	@SuppressWarnings("unused")
+			boolean deleted = filePP.delete();
 	        Transformer transformer = TransformerFactory.newInstance().newTransformer();
 	        transformer.setOutputProperty(OutputKeys.INDENT, "yes");
 	        transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
@@ -571,7 +574,7 @@ public class StatisticAnalysis {
 			Record newR = new Record(game, score, time, new Date());
 			records.add(newR);
 			setBestTime();
-			setRecord(this, newR);
+			setRecord(this, newR, game);
 		}
 		
 		public ArrayList<Record> getRecords()

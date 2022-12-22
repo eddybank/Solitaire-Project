@@ -1,8 +1,10 @@
 package Klondike;
 
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.Frame;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
@@ -10,7 +12,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
+//import java.awt.event.WindowListener;
 import java.awt.event.WindowStateListener;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -22,90 +24,173 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.Style;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyledDocument;
 
 import global.Card;
-import global.SolitaireMenu;
-
 
 public class SolitaireK
 {
 	// CONSTANTS
-	public static int TABLE_HEIGHT = Card.CARD_HEIGHT * 4;
-	public static int TABLE_WIDTH = (Card.CARD_WIDTH * 7) + 100;
-	public static final int NUM_FINAL_DECKS = 4;
-	public static final int NUM_PLAY_DECKS = 7;
-	public static final Point DECK_POS = new Point(5, 5);
-	public static final Point SHOW_POS = new Point(DECK_POS.x + Card.CARD_WIDTH + 5, DECK_POS.y);
-	public static final Point FINAL_POS = new Point(SHOW_POS.x + Card.CARD_WIDTH + 150, DECK_POS.y);
-	public static final Point PLAY_POS = new Point(DECK_POS.x, FINAL_POS.y + Card.CARD_HEIGHT + 30);
+	public int TABLE_HEIGHT = Card.CARD_HEIGHT * 4;
+	public int TABLE_WIDTH = (Card.CARD_WIDTH * 7) + 100;
+	public final int NUM_FINAL_DECKS = 4;
+	public final int NUM_PLAY_DECKS = 7;
+	public final Point DECK_POS = new Point(5, 5);
+	public final Point SHOW_POS = new Point(DECK_POS.x + Card.CARD_WIDTH + 5, DECK_POS.y);
+	public final Point FINAL_POS = new Point(SHOW_POS.x + Card.CARD_WIDTH + 150, DECK_POS.y);
+	public final Point PLAY_POS = new Point(DECK_POS.x, FINAL_POS.y + Card.CARD_HEIGHT + 30);
 
 	// GAMEPLAY STRUCTURES
-	private static FinalStackK[] final_cards;// Foundation Stacks
-	private static CardStackK[] playCardStackK; // Tableau stacks
-	private static final Card newCardPlace = new Card();// waste card spot
-	private static CardStackK deck; // populated with standard 52 card deck
+	private FinalStackK[] final_cards;// Foundation Stacks
+	private CardStackK[] playCardStackK; // Tableau stacks
+	private final Card newCardPlace = new Card();// waste card spot
+	private CardStackK deck; // populated with standard 52 card deck
 
 	// GUI COMPONENTS (top level)
-	public static final JFrame frame = new JFrame("Klondike Solitaire");
-	public static final JPanel table = new JPanel();
+	private final JFrame frame = new JFrame("Klondike Solitaire");
+	private final JPanel table = new JPanel();
 	// other components
-	public static JEditorPane gameTitle = new JEditorPane("text/html", "");
-	private static JButton showRulesButton = new JButton("Show Rules");
-	public static JButton newGameButton = new JButton("New Game");
-	private static JButton toggleTimerButton = new JButton("Pause Timer");
-	public static JTextPane scoreBox = new JTextPane();// displays the score
-	public static JTextPane timeBox = new JTextPane();// displays the time
-	public static JTextPane statusBox = new JTextPane();// status messages
-	private static final Card newCardButton = new Card();// reveal waste card
+	private JEditorPane gameTitle = new JEditorPane("text/html", "");
+	private JButton showRulesButton = new JButton("Show Rules");
+	private JButton newGameButton = new JButton("New Game");
+	private JButton toggleTimerButton = new JButton("Pause Timer");
+	private JTextPane scoreBox = new JTextPane();// displays the score
+	private JTextPane timeBox = new JTextPane();// displays the time
+	private JTextPane statusBox = new JTextPane();// status messages
+	private final Card newCardButton = new Card();// reveal waste card
 
 	// TIMER UTILITIES
-	private static Timer timer = new Timer();
-	private static ScoreClock scoreClock = new ScoreClock();
+	private Timer timer = new Timer();
+	private ScoreClock scoreClock = new ScoreClock();
 
 	// MISC TRACKING VARIABLES
-	private static boolean timeRunning = false;// timer running?
-	private static int score = 0;// keep track of the score
-	private static int time = 0;// keep track of seconds elapsed
+	private boolean timeRunning = false;// timer running?
+	private int score = 0;// keep track of the score
+	private int time = 0;// keep track of seconds elapsed
 	
+	// COLOR
+	private Color bgColor = null;
+	private Style style = this.statusBox.addStyle("bgColor", null);
+	private StyledDocument scoreDoc = this.scoreBox.getStyledDocument();
+	private StyledDocument timeDoc = this.timeBox.getStyledDocument();
+	private StyledDocument statusDoc = this.statusBox.getStyledDocument();
+		
 	//Action Listener for buttons
-	private static ActionListener ae = new setUpButtonListeners();
-
-	private static WindowListener wL = new SolitaireMenu.gameListener();
-	
-	private static WindowStateListener wSL = new gameListener();
-	
-	// moves a card to abs location within a component
-	protected static Card moveCard(Card c, int x, int y)
-	{
-		c.setBounds(new Rectangle(new Point(x, y), new Dimension(Card.CARD_WIDTH + 10, Card.CARD_HEIGHT + 10)));
-		c.setXY(new Point(x, y));
-		return c;
-	}
+	private ActionListener ae = new setUpButtonListeners();
+	private ActionListener menuNewGameListener;
+	private CardMovementManager cm = new CardMovementManager();
+	private WindowStateListener wSL = new resizeListener();
 
 	// add/subtract points based on gameplay actions
-	protected static void setScore(int deltaScore)
+	protected void setScore(int deltaScore)
 	{
-		SolitaireK.score += deltaScore;
-		String newScore = "Score: " + SolitaireK.score;
+		score += deltaScore;
+		String newScore = "Score: " + score;
 		scoreBox.setText(newScore);
 		scoreBox.repaint();
 	}
+	
+	public void setColor(Color c) {
+		bgColor = c;
+		updateForColorChange(c);
+	}
+	
+	public void setMenuNewGameListener(ActionListener ae) {
+		menuNewGameListener = ae;
+	}
+	
+	// GETTERS
+	public JPanel getTable() {
+		return table;
+	}
+	
+	public JTextPane getScoreBox() {
+		return scoreBox;
+	}
+	
+	public JTextPane getTimeBox() {
+		return timeBox;
+	}
+	
+	public JTextPane getStatusBox() {
+		return statusBox;
+	}
+	
+	public JEditorPane getGameTitle() {
+		return gameTitle;
+	}
+	
+	public JButton getNewGameButton() {
+		return newGameButton;
+	}
+	
+	public int getTime() {
+		return time;
+	}
+	
+	// COLOR UPDATER
+	private void updateForColorChange(Color c) {
+		String scoreText = this.scoreBox.getText();
+		String timeText = this.timeBox.getText();
+		String statusText = this.statusBox.getText();
+		
+		toggleTimer();
+		
+		try {
+			if(c == Color.GRAY || c == Color.DARK_GRAY || c == new Color(0, 180, 0) || c == Color.BLUE) {
+				this.scoreBox.setText("");
+				this.timeBox.setText("");
+				this.statusBox.setText("");
+				this.gameTitle.setText("");
+				
+				StyleConstants.setForeground(style, Color.WHITE);
+
+		        scoreDoc.insertString(scoreDoc.getLength(), scoreText, style);
+		        timeDoc.insertString(timeDoc.getLength(), timeText, style);
+		        statusDoc.insertString(statusDoc.getLength(), statusText, style);
+		        gameTitle.setText("<span style =\"color:white\"><b>Team 1<br>Flea Market Solitaire</b> <br> CPSC 4900 <br> Fall 2021</span>");
+		        
+			} else if(c == Color.WHITE || c == Color.PINK || c == Color.ORANGE || 
+					c == Color.CYAN || c == Color.YELLOW || c == Color.RED) {
+				this.scoreBox.setText("");
+				this.timeBox.setText("");
+				this.statusBox.setText("");
+				this.gameTitle.setText("");
+				
+				StyleConstants.setForeground(style, Color.BLACK);
+				
+				scoreDoc.insertString(scoreDoc.getLength(), scoreText, style);
+		        timeDoc.insertString(timeDoc.getLength(), timeText, style);
+		        statusDoc.insertString(statusDoc.getLength(), statusText, style);
+		        gameTitle.setText("<span style =\"color:black\"><b>Team 1<br>Flea Market Solitaire</b> <br> CPSC 4900 <br> Fall 2021</span>");
+
+			}
+			table.setBackground(c);
+		} catch (BadLocationException e1) {
+			System.out.println("Error occurred - Printing stack trace");
+			e1.printStackTrace();
+		}
+		toggleTimer();
+	}
 
 	// GAME TIMER UTILITIES
-	protected static void updateTimer()
+	protected void updateTimer()
 	{
-		SolitaireK.time += 1;
+		time += 1;
 		// every 10 seconds elapsed we take away 2 points
-		if (SolitaireK.time % 10 == 0)
+		if (time % 10 == 0)
 		{
 			setScore(-2);
 		}
-		String time = "Seconds: " + SolitaireK.time;
+		String time = "Seconds: " + this.time;
 		timeBox.setText(time);
 		timeBox.repaint();
 	}
 
-	protected static void startTimer()
+	protected void startTimer()
 	{
 		scoreClock = new ScoreClock();
 		// set the timer to update every second
@@ -113,7 +198,7 @@ public class SolitaireK
 		timeRunning = true;
 	}
 	
-	protected static void resetTimer()
+	protected void resetTimer()
 	{
 		scoreClock.cancel();
 		time = 0;
@@ -122,7 +207,7 @@ public class SolitaireK
 
 
 	// the pause timer button uses this
-	protected static void toggleTimer()
+	protected void toggleTimer()
 	{
 		if (timeRunning && scoreClock != null)
 		{
@@ -134,7 +219,7 @@ public class SolitaireK
 		}
 	}
 
-	private static class ScoreClock extends TimerTask
+	private class ScoreClock extends TimerTask
 	{
 		@Override
 		public void run()
@@ -143,12 +228,12 @@ public class SolitaireK
 		}
 	}
 
-	public static class gameListener implements WindowStateListener
+	public class resizeListener implements WindowStateListener
 	{
 		@Override
 		public void windowStateChanged(WindowEvent e) {
 			
-			if (e.getNewState() == frame.MAXIMIZED_BOTH){ //this means maximized
+			if (e.getNewState() == Frame.MAXIMIZED_BOTH){ //this means maximized
 
 		    	TABLE_HEIGHT = frame.getHeight();
 		    	TABLE_WIDTH = frame.getWidth();
@@ -165,8 +250,8 @@ public class SolitaireK
 				}
 
 				table.add(moveCard(newCardButton, (int)Math.round(TABLE_WIDTH*(.00625)), (int)Math.round(TABLE_WIDTH*(.00625))));
-				if(CardMovementManager.prevCard != null) {
-					table.add(SolitaireK.moveCard(CardMovementManager.prevCard, (int)Math.round(TABLE_WIDTH*(.1375)), (int)Math.round(TABLE_WIDTH*(.00625))));
+				if(cm.prevCard != null) {
+					table.add(moveCard(cm.prevCard, (int)Math.round(TABLE_WIDTH*(.1375)), (int)Math.round(TABLE_WIDTH*(.00625))));
 				}
 				
 				for (int x = 0; x < NUM_PLAY_DECKS; x++)
@@ -198,7 +283,7 @@ public class SolitaireK
 				statusBox.setEditable(false);
 				statusBox.setOpaque(false);
 				
-		      } else if (e.getOldState() == frame.MAXIMIZED_BOTH) { //this means minimized state
+		      } else if (e.getOldState() == Frame.MAXIMIZED_BOTH) { //this means minimized state
 			    	
 			    	Card.CARD_HEIGHT = 150;
 			    	Card.CARD_WIDTH = 100;
@@ -218,8 +303,8 @@ public class SolitaireK
 					}
 					// place new CardC distribution button
 					table.add(moveCard(newCardButton, DECK_POS.x, DECK_POS.y));
-					if(CardMovementManager.prevCard != null) {
-						table.add(SolitaireK.moveCard(CardMovementManager.prevCard, SHOW_POS.x, SHOW_POS.y));
+					if(cm.prevCard != null) {
+						table.add(moveCard(cm.prevCard, SHOW_POS.x, SHOW_POS.y));
 					}
 					
 					// initialize & place play (tableau) decks/stacks
@@ -257,7 +342,7 @@ public class SolitaireK
 	}
 	
 	// BUTTON LISTENER
-	private static class setUpButtonListeners implements ActionListener
+	private class setUpButtonListeners implements ActionListener
 	{
 		@Override
 		public void actionPerformed(ActionEvent e)
@@ -275,7 +360,6 @@ public class SolitaireK
 					JDialog ruleFrame = new JDialog(frame, true);
 					ruleFrame.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 					ruleFrame.setSize(TABLE_HEIGHT, TABLE_WIDTH);
-					JScrollPane scroll;
 					JEditorPane rulesTextPane = new JEditorPane("text/html", "");
 					rulesTextPane.setEditable(false);
 					String rulesText = "<b>Klondike Solitaire Rules</b>"
@@ -305,21 +389,29 @@ public class SolitaireK
 							+ "the game begins, but it may be paused by pressing the pause button at the bottom of"
 							+ "the screen. ";
 					rulesTextPane.setText(rulesText);
-					ruleFrame.add(scroll = new JScrollPane(rulesTextPane));
+					ruleFrame.add(new JScrollPane(rulesTextPane));
 
 					ruleFrame.setVisible(true);
 			}
 		}
 	}
 
+	// moves a card to abs location within a component
+	protected Card moveCard(Card c, int x, int y)
+	{
+		c.setBounds(new Rectangle(new Point(x, y), new Dimension(Card.CARD_WIDTH + 10, Card.CARD_HEIGHT + 10)));
+		c.setXY(new Point(x, y));
+		return c;
+	}
+	
 	/*
 	 * This class handles all of the logic of moving the Card components as well
 	 * as the game logic. This determines where Cards can be moved according to
 	 * the rules of Klondike solitiaire
 	 */
-	private static class CardMovementManager extends MouseAdapter
+	private class CardMovementManager extends MouseAdapter
 	{
-		private static Card prevCard = null;// tracking card for waste stack
+		private Card prevCard = null;// tracking card for waste stack
 		private Card movedCard = null;// card moved from waste stack
 		private boolean sourceIsFinalDeck = false;
 		private boolean putBackOnDeck = true;// used for waste card recycling
@@ -442,7 +534,7 @@ public class SolitaireK
 				if (prevCard != null)
 					table.remove(prevCard);
 				Card c = deck.pop().setFaceup();
-				table.add(SolitaireK.moveCard(c, (int)Math.round(TABLE_WIDTH*(.1375)), (int)Math.round(TABLE_WIDTH*(.00625))));
+				table.add(moveCard(c, (int)Math.round(TABLE_WIDTH*(.1375)), (int)Math.round(TABLE_WIDTH*(.00625))));
 				c.repaint();
 				table.repaint();
 				prevCard = c;
@@ -784,35 +876,11 @@ public class SolitaireK
 			gameOver = false;
 		}// end mousePressed()
 	}
-
-	public static void playKNewGame()
-	{
-		newGameButton.removeActionListener(SolitaireMenu.ae);
-		
-		showRulesButton.removeActionListener(ae);
-		
-		toggleTimerButton.removeActionListener(ae);
-		
-		frame.removeWindowStateListener(wSL);
-		
-		frame.removeWindowListener(wL);
-		frame.dispose();
-		
+	
+	private void setTableaus() {
 		deck = new CardStackK(true); // deal 52 cards
 		deck.shuffle();
-		table.removeAll();
-		// reset stacks if user starts a new game in the middle of one
-		if (playCardStackK != null && final_cards != null)
-		{
-			for (int x = 0; x < NUM_PLAY_DECKS; x++)
-			{
-				playCardStackK[x].makeEmpty();
-			}
-			for (int x = 0; x < NUM_FINAL_DECKS; x++)
-			{
-				final_cards[x].makeEmpty();
-			}
-		}
+		
 		// initialize & place final (foundation) decks/stacks
 		final_cards = new FinalStackK[NUM_FINAL_DECKS];
 		for (int x = 0; x < NUM_FINAL_DECKS; x++)
@@ -838,7 +906,7 @@ public class SolitaireK
 		// Dealing new game
 		for (int x = 0; x < NUM_PLAY_DECKS; x++)
 		{
-			int hld = 0;
+			//int hld = 0;
 			Card c = deck.pop().setFaceup();
 			playCardStackK[x].putFirst(c);
 
@@ -848,9 +916,37 @@ public class SolitaireK
 			}
 		}
 
-		resetTimer();
+	}
+	
+	private void resetGame() {
+		// reset stacks if user starts a new game in the middle of one
+		if (playCardStackK != null && final_cards != null) {
+			for (int x = 0; x < NUM_PLAY_DECKS; x++) {
+				playCardStackK[x].makeEmpty();
+			}
+			for (int x = 0; x < NUM_FINAL_DECKS; x++) {
+				final_cards[x].makeEmpty();
+			}
+		}
 		
-		newGameButton.addActionListener(SolitaireMenu.ae);
+		newGameButton.removeActionListener(menuNewGameListener);
+		
+		showRulesButton.removeActionListener(ae);
+		
+		toggleTimerButton.removeActionListener(ae);
+		
+		frame.removeWindowStateListener(wSL);
+		
+		//frame.removeWindowListener(wL);
+		frame.remove(table);
+		
+		table.removeAll();
+		
+		resetTimer();
+	}
+	
+	private void setUpFrame() {
+		newGameButton.addActionListener(menuNewGameListener);
 		newGameButton.setBounds(0, TABLE_HEIGHT - 70, 120, 30);
 
 		showRulesButton.addActionListener(ae);
@@ -894,12 +990,12 @@ public class SolitaireK
 		frame.setSize(TABLE_WIDTH, TABLE_HEIGHT);
 
 		table.setLayout(null);
-		table.setBackground(SolitaireMenu.getColor());
+		table.setBackground(bgColor);
 
 		contentPane = frame.getContentPane();
 		contentPane.add(table);
 		frame.addWindowStateListener(wSL);
-		frame.addWindowListener(wL);
+		//frame.addWindowListener(wL);
 		frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		
 		table.addMouseListener(new CardMovementManager());
@@ -908,8 +1004,13 @@ public class SolitaireK
 		frame.setVisible(true);
 	}
 
-	public static void main(String[] args)
-	{
-		playKNewGame();
+	public void resetK() {
+		resetGame();
+		setUpFrame();
+	}
+	
+	public void playK() {
+		setTableaus();
+		setUpFrame();
 	}
 }
